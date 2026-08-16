@@ -342,7 +342,7 @@
   // either react almost instantly for a high score, or the value fades
   // away the longer you hesitate. No trig, no degrees — just a number line.
   const DOMAIN_MAX = 10;
-  const BASE_ACCEL = { v0: 2*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is 2x the original pace
+  const BASE_ACCEL = { v0: 4*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is 4x the original pace (doubled again)
   const BUST_FRAC = 89.9/90;
   const BUST_P = DOMAIN_MAX * BUST_FRAC;
   const Y_CAP = 30;
@@ -359,15 +359,13 @@
   // Score/points/costs render in plain decimal up to 3 digits; beyond that,
   // scientific notation with a true superscript exponent (e.g. "1.23×10⁵")
   // so huge numbers stay compact and readable.
+  // Always plain decimal, comma-grouped for readability — no scientific notation.
   function fmtNum(n){
     if (!isFinite(n)) return n > 0 ? '∞' : (n < 0 ? '-∞' : 'NaN');
     const sign = n < 0 ? '-' : '';
-    const abs = Math.abs(n);
-    if (abs < 1000) return sign + abs.toFixed(2);
-    let exp = Math.floor(Math.log10(abs));
-    let mantissa = abs / Math.pow(10, exp);
-    if (Math.round(mantissa * 100) / 100 >= 10) { mantissa /= 10; exp += 1; }
-    return sign + mantissa.toFixed(2) + '×10' + toSuperscript(exp);
+    const parts = Math.abs(n).toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return sign + parts.join('.');
   }
 
   // How long until idle income alone covers a shortfall, in "1d 3h" style.
@@ -406,11 +404,7 @@
   function scoreMult(level){ return 1 + 0.05*level; }                  // each level: +0.05 score (1.00 -> 1.05 -> ...)
   function multCost(level){ return baseCost() * Math.pow(2, level); }
   function funcThreshold(level){ return Math.round(10 * Math.pow(100, level)); } // session-best needed to reach level+1: 10, 1000, 100000, ...
-  // funcThreshold and costTierBarrier are always exact powers of ten
-  // (10^(1+2*level)), so the mantissa is always "1.00" — skip it, show "10^exp".
-  function funcThresholdLabel(level){ return '10' + toSuperscript(1 + 2*level); }
   function costTierBarrier(tier){ return Math.round(10 * Math.pow(100, tier)); } // session-best needed to drop to the next cost tier
-  function costTierBarrierLabel(tier){ return '10' + toSuperscript(1 + 2*tier); }
 
   // Reflex Idle: your SESSION-best score is your passive points-per-second
   // rate while a game is running. It resets with the rest of the session —
@@ -424,7 +418,7 @@
   // Rule: bump this version suffix on every gameplay-affecting change
   // (scoring, costs, effects, save shape). It resets everyone to a clean
   // slate instead of leaving stale/incompatible numbers behind.
-  const SAVE_KEY = 'inv_x_reflex_save_v20'; // bumped: 5-minute session structure — only cost tier persists between games
+  const SAVE_KEY = 'inv_x_reflex_save_v21'; // bumped: initial speed doubled again (now 4x original), scores/costs no longer use scientific notation
   const SAVE_DEFAULTS = {
     allTimeBest: 0,   // persists forever
     costTier: 0,      // persists forever — the only cross-game upgrade
@@ -545,7 +539,7 @@
       landAllTime.textContent = fmtNum(save.allTimeBest);
       landLast.textContent = save.runs > 0 ? fmtNum(save.lastSessionBest) : '—';
       landCost.textContent = fmtNum(baseCost()) + ' pts';
-      landNextTier.textContent = costTierBarrierLabel(save.costTier);
+      landNextTier.textContent = fmtNum(costTierBarrier(save.costTier));
     }
 
     speedLv.textContent = 'Lv ' + save.speedLevel;
@@ -574,7 +568,7 @@
     funcEffect.textContent = funcSymbol(save.funcLevel);
     const nextFuncThreshold = funcThreshold(save.funcLevel);
     const funcMet = save.sessionBest >= nextFuncThreshold;
-    funcCostEl.textContent = 'needs session best ' + funcThresholdLabel(save.funcLevel);
+    funcCostEl.textContent = 'needs session best ' + fmtNum(nextFuncThreshold);
     funcCostEl.classList.toggle('met', funcMet);
     btnBuyFunc.classList.toggle('afford', funcMet);
 
