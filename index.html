@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cot(x) — Reflex Game</title>
+<style>
+  :root{
+    --bg:#05060a;
+    --cyan:#33e6ff;
+    --magenta:#ff2fb0;
+    --yellow:#ffd23f;
+    --red:#ff3355;
+    --dim:#6a7a94;
+    --text:#eaf2ff;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:radial-gradient(circle at 50% 0%, #131826 0%, #05060a 60%);
+    color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app{
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; width:100%; padding:20px 16px;
+  }
+  .title{ text-align:center; margin-bottom:10px; }
+  .title h1{
+    margin:0; font-size:26px; letter-spacing:3px; font-weight:800;
+    color:var(--red); text-shadow:0 0 14px rgba(255,51,85,.5);
+  }
+  .title .lvl{ font-size:12px; letter-spacing:4px; color:var(--dim); margin-top:2px; }
+
+  #wrap{ width:min(900px, 96vw); }
+
+  .statsbar{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:18px 26px;
+    margin-bottom:14px; font-size:13px; letter-spacing:1px; color:var(--dim);
+  }
+  .statsbar b{ color:var(--text); font-size:15px; }
+  .statsbar .hs b{ color:var(--magenta); }
+  .statsbar .pts b{ color:var(--yellow); }
+  .statsbar .sb b{ color:var(--cyan); }
+  .statsbar .tl b{ color:var(--text); }
+  .statsbar .tl b.urgent{ color:var(--red); }
+
+  #stage{
+    position:relative; width:100%;
+    aspect-ratio: 16/9.4;
+    background:linear-gradient(180deg,#0b0e17,#080a11);
+    border:1px solid #1c2436; border-radius:14px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.02), 0 20px 60px rgba(0,0,0,.6);
+    overflow:hidden;
+  }
+  canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; cursor:pointer; }
+
+  .hud{
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    display:flex; gap:22px;
+    font-size:12px; letter-spacing:1px; color:var(--dim);
+    pointer-events:none;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud .val{ color:var(--text); font-weight:700; }
+  .hud .cyan{ color:var(--cyan); }
+
+  .overlay{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    background:rgba(4,5,9,.72);
+    backdrop-filter: blur(3px);
+    gap:12px;
+    animation:fadeIn .25s ease;
+    padding:20px;
+  }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .overlay.hidden{ display:none; }
+
+  .big{ font-size:34px; font-weight:800; letter-spacing:1px; }
+  .sub{ font-size:13px; color:var(--dim); max-width:440px; line-height:1.5; }
+  .hint{ font-size:12px; color:var(--cyan); letter-spacing:1px; }
+
+  .score{ font-size:58px; font-weight:900; text-shadow:0 0 24px currentColor; }
+  .tierline{ font-size:16px; font-weight:700; letter-spacing:2px; }
+  .meta{ font-size:12px; color:var(--dim); }
+
+  button{
+    font-family:inherit; font-weight:700; letter-spacing:1px;
+    padding:11px 24px; border-radius:999px; border:none;
+    background:linear-gradient(135deg,var(--red),#a8102b);
+    color:#170000; cursor:pointer; font-size:13px;
+    box-shadow:0 6px 20px rgba(255,51,85,.35);
+    transition:transform .12s ease;
+  }
+  button:active{ transform:scale(.95); }
+
+  #countdown{ font-size:80px; font-weight:900; color:var(--yellow); text-shadow:0 0 30px rgba(255,210,63,.7); }
+
+  .pausebtn{
+    position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    padding:9px 26px; border-radius:999px; font-size:12px;
+    background:rgba(51,230,255,.15); color:var(--cyan); border:1px solid rgba(51,230,255,.5);
+    box-shadow:0 0 20px rgba(51,230,255,.25);
+    letter-spacing:2px;
+  }
+  .pausebtn.hidden{ display:none; }
+
+  body.shake{ animation:shake .35s ease; }
+  @keyframes shake{
+    0%,100%{ transform:translate(0,0); } 20%{ transform:translate(-8px,4px); }
+    40%{ transform:translate(7px,-5px); } 60%{ transform:translate(-6px,-3px); } 80%{ transform:translate(5px,5px); }
+  }
+
+  .footer{ margin-top:12px; font-size:11px; color:var(--dim); letter-spacing:1px; text-align:center; }
+
+  /* ---------------- UPGRADES ---------------- */
+  .upgrades{
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;
+    margin-top:14px;
+  }
+  @media (max-width:680px){ .upgrades{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:420px){ .upgrades{ grid-template-columns:1fr; } }
+  .upcard{
+    background:#0d1220; border:1px solid #1c2436; border-radius:14px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:6px;
+  }
+  .upcard .uphead{ display:flex; justify-content:space-between; align-items:baseline; }
+  .upcard .upname{ font-size:12px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; }
+  .upcard .uplevel{ font-size:11px; color:#7c8db0; font-weight:700; }
+  .upcard .upeffect{ font-size:20px; font-weight:800; color:var(--cyan); }
+  .upcard.mult .upeffect{ color:var(--yellow); }
+  .upcard.func .upeffect{ color:var(--magenta); }
+  .upcard .updesc{ font-size:11px; color:var(--dim); line-height:1.4; }
+  .upcard .uprow{ display:flex; align-items:center; margin-top:4px; }
+  .upcard .upcost{ font-size:12px; color:#9fb0cc; font-weight:700; }
+  .upcard .upeta{ font-size:10px; color:var(--dim); text-align:center; letter-spacing:.5px; margin-top:5px; }
+  .upcard .upeta.ready{ color:var(--green,#5dffa1); }
+  .upcard.func .upcost{ color:var(--magenta); }
+  .upcard.func .upcost.met{ color:var(--green,#5dffa1); }
+
+  .upcard button.upbtn{
+    position:relative; overflow:hidden; isolation:isolate; width:100%;
+    padding:9px 18px; font-size:12px;
+    background:#161c2c; color:#9fb0cc; box-shadow:none;
+    border:1px solid #232c40;
+  }
+  .upcard button.upbtn .upfill{
+    position:absolute; inset:0; width:0%; z-index:0;
+    background:linear-gradient(135deg,var(--cyan),#1592a8);
+    opacity:.55; transition:width .25s ease;
+  }
+  .upcard.mult button.upbtn .upfill{ background:linear-gradient(135deg,var(--yellow),#c99b1a); }
+  .upcard button.upbtn .upbtnlabel{ position:relative; z-index:1; }
+  .upcard button.upbtn.afford{ color:#eaf2ff; border-color:transparent; }
+  .upcard button.upbtn.afford .upfill{ opacity:1; }
+  .upcard button.upbtn.afford{
+    box-shadow:0 6px 16px rgba(51,230,255,.3);
+  }
+  .upcard.mult button.upbtn.afford{
+    box-shadow:0 6px 16px rgba(255,210,63,.3);
+  }
+  .upcard.func button.upbtn.afford{
+    background:linear-gradient(135deg,var(--magenta),#a8107a); color:#1a0012;
+    box-shadow:0 6px 16px rgba(255,47,176,.3);
+  }
+  .upcard.shake{ animation:shake .35s ease; }
+
+  .resetrow{ display:flex; justify-content:center; margin-top:16px; }
+  .resetbtn{
+    background:transparent; box-shadow:none;
+    color:var(--dim); border:1px solid #232c40;
+    font-size:11px; letter-spacing:1px; padding:8px 18px;
+  }
+  .resetbtn:hover{ color:var(--red); border-color:rgba(255,51,85,.4); }
+  .resetbtn.confirming{
+    color:#170000; background:linear-gradient(135deg,var(--red),#a8102b);
+    border-color:transparent; box-shadow:0 6px 16px rgba(255,51,85,.35);
+  }
+
+  #ovLanding{ z-index:6; }
+  .landingstats{
+    display:flex; flex-direction:column; gap:6px; margin:4px 0;
+    font-size:13px; color:var(--dim); letter-spacing:.5px;
+  }
+  .landingstats b{ color:var(--text); }
+  .landingstats .lmagenta{ color:var(--magenta); }
+  .landingstats .lcyan{ color:var(--cyan); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="title">
+    <h1>1 / X</h1>
+    <div class="lvl">REACT BEFORE IT FADES</div>
+  </div>
+
+  <div id="wrap">
+    <div class="statsbar">
+      <div class="hs">ALL-TIME HIGH SCORE <b id="hudHighScore">0</b></div>
+      <div class="sb">SESSION BEST <b id="hudSessionBest">0</b></div>
+      <div class="pts">POINTS <b id="hudPoints">0</b> <span id="hudRate" style="color:var(--dim);font-weight:400;">(+0.00/s)</span></div>
+      <div class="tl">TIME LEFT <b id="hudTimer">--:--</b></div>
+    </div>
+
+    <div id="stage">
+      <canvas id="c"></canvas>
+
+      <div class="hud">
+        <div>x = <span class="val cyan" id="hudAngle">0.00</span></div>
+        <div><span id="hudFnLabel">1/x</span> = <span class="val" id="hudVal">∞</span></div>
+      </div>
+
+      <div class="pausebtn hidden" id="pauseBtn">‖ PAUSE (SPACE)</div>
+
+      <div class="overlay hidden" id="ovLanding">
+        <div class="big">NEW GAME</div>
+        <div class="sub">
+          5 minutes on the clock. Points, Slow-Mo, Amplifier, and Upgrade Function all reset to zero —
+          the only thing that carries over between games is your starting cost, unlocked by clearing
+          high-score barriers.
+        </div>
+        <div class="landingstats">
+          <div>ALL-TIME HIGH SCORE <b class="lmagenta" id="landAllTime">0</b></div>
+          <div>LAST GAME'S SCORE <b id="landLast">—</b></div>
+          <div>STARTING COST <b class="lcyan" id="landCost">10 pts</b> · next tier at <b id="landNextTier">10¹</b></div>
+        </div>
+        <button id="btnStartSession">START 5-MIN GAME</button>
+        <div class="hint">SPACE / TAP TO PLAY</div>
+      </div>
+
+      <div class="overlay hidden" id="ovIdle">
+        <div class="big" id="idleTitle">1 / X</div>
+        <div class="sub">
+          The instant this starts, 1/x is already near infinity. Press <b>SPACE</b> or tap
+          as fast as you can — the earlier you pause, the higher your score. Hesitate and it
+          fades toward zero. Pure reflex, no build-up.
+        </div>
+        <button id="btnStart">START</button>
+        <div class="hint">SPACE / TAP TO PLAY</div>
+      </div>
+
+      <div class="overlay hidden" id="ovCountdown">
+        <div id="countdown">3</div>
+      </div>
+
+      <div class="overlay hidden" id="ovResult">
+        <div class="score" id="resScore" style="color:var(--cyan);">0</div>
+        <div class="tierline" id="resTierline">—</div>
+        <div class="meta" id="resMeta">paused at x = 0.00</div>
+        <div class="meta" id="resEarn" style="color:var(--yellow);">+0 points</div>
+        <button id="btnAgain">PLAY AGAIN</button>
+        <div class="hint">SPACE TO RETRY</div>
+      </div>
+    </div>
+
+    <div class="footer">1/x is huge near x = 0 and fades to 0 by x = 10. one game, one rule: react fast.</div>
+
+    <div class="upgrades">
+      <div class="upcard speed" id="cardSpeed">
+        <div class="uphead">
+          <div class="upname">Slow-Mo</div>
+          <div class="uplevel" id="speedLv">Lv 0</div>
+        </div>
+        <div class="upeffect" id="speedEffect">×1.00 speed</div>
+        <div class="updesc">Slows the round down so 1/x fades more gently — more time to react.</div>
+        <div class="upcost" id="speedCost">25 pts</div>
+        <div class="uprow">
+          <button class="upbtn" id="btnBuySpeed"><span class="upfill" id="speedFill"></span><span class="upbtnlabel">UPGRADE</span></button>
+        </div>
+        <div class="upeta" id="speedEta"></div>
+      </div>
+      <div class="upcard mult" id="cardMult">
+        <div class="uphead">
+          <div class="upname">Amplifier</div>
+          <div class="uplevel" id="multLv">Lv 0</div>
+        </div>
+        <div class="upeffect" id="multEffect">×1.00 score</div>
+        <div class="updesc">Permanently multiplies every score you earn from here on.</div>
+        <div class="upcost" id="multCost">20 pts</div>
+        <div class="uprow">
+          <button class="upbtn" id="btnBuyMult"><span class="upfill" id="multFill"></span><span class="upbtnlabel">UPGRADE</span></button>
+        </div>
+        <div class="upeta" id="multEta"></div>
+      </div>
+      <div class="upcard func" id="cardFunc">
+        <div class="uphead">
+          <div class="upname">Upgrade Function</div>
+          <div class="uplevel" id="funcLv">Lv 0</div>
+        </div>
+        <div class="upeffect" id="funcEffect">1/x</div>
+        <div class="updesc">Raises the exponent — bigger payoff per instant, less margin for error. Gated by this session's best, not points. In-session reset: Slow-Mo, Amplifier, points, and session best all go back to zero.</div>
+        <div class="uprow">
+          <div class="upcost" id="funcCost">needs high score 5</div>
+          <button class="upbtn" id="btnBuyFunc">UPGRADE</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="resetrow">
+      <button id="btnReset" class="resetbtn">RESET PROGRESS</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ================= GAME CONFIG =================
+  // 1/x starts (practically) at infinity right as the round begins and
+  // decays smoothly to 0 by x=10. There's no build-up to wait out — you
+  // either react almost instantly for a high score, or the value fades
+  // away the longer you hesitate. No trig, no degrees — just a number line.
+  const DOMAIN_MAX = 10;
+  const BASE_ACCEL = { v0: 2*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is 2x the original pace
+  const BUST_FRAC = 89.9/90;
+  const BUST_P = DOMAIN_MAX * BUST_FRAC;
+  const Y_CAP = 30;
+  // the live function is 1/x^power — power starts at 1 and rises with funcLevel
+  function funcPower(level){ return level + 1; }
+  function fn(x){ return 1 / Math.pow(Math.max(x, 0.001), funcPower(save.funcLevel)); }
+  const SUP_DIGITS = ['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'];
+  function toSuperscript(n){
+    return String(n).split('').map(ch => ch === '-' ? '⁻' : (SUP_DIGITS[+ch] || ch)).join('');
+  }
+  function superscript(n){ return n <= 1 ? '' : toSuperscript(n); }
+  function funcSymbol(level){ return '1/x' + superscript(funcPower(level)); }
+
+  // Score/points/costs render in plain decimal up to 3 digits; beyond that,
+  // scientific notation with a true superscript exponent (e.g. "1.23×10⁵")
+  // so huge numbers stay compact and readable.
+  function fmtNum(n){
+    if (!isFinite(n)) return n > 0 ? '∞' : (n < 0 ? '-∞' : 'NaN');
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+    if (abs < 1000) return sign + abs.toFixed(2);
+    let exp = Math.floor(Math.log10(abs));
+    let mantissa = abs / Math.pow(10, exp);
+    if (Math.round(mantissa * 100) / 100 >= 10) { mantissa /= 10; exp += 1; }
+    return sign + mantissa.toFixed(2) + '×10' + toSuperscript(exp);
+  }
+
+  // How long until idle income alone covers a shortfall, in "1d 3h" style.
+  function formatDuration(sec){
+    if (!isFinite(sec)) return '—';
+    if (sec <= 0) return 'ready';
+    const units = [['d',86400],['h',3600],['m',60],['s',1]];
+    let remaining = Math.ceil(sec);
+    const parts = [];
+    for (const [label,size] of units){
+      const val = Math.floor(remaining/size);
+      if (val > 0){ parts.push(val+label); remaining -= val*size; }
+      if (parts.length >= 2) break;
+    }
+    if (parts.length === 0) parts.push('0s');
+    return 'in ' + parts.join(' ');
+  }
+
+  // ================= UPGRADES =================
+  // Speed and Amplifier are independent, uncapped ladders bought with points
+  // from every run. Both start at 100pts and double in cost every level —
+  // steep, but each level's effect is a flat step so it stays easy to reason
+  // about. Upgrade Function is different: it costs no points at all, it's
+  // gated purely by your high score, so it only opens up once you've
+  // actually proven you can play at this pace.
+  function speedFactor(level){
+    // -0.05/level down to 0.10 (levels 0-18), then finer -0.005/level steps
+    // from 0.10 down to a 0.01 floor (levels 19-36+).
+    if (level <= 18) return 1 - 0.05*level;
+    return Math.max(0.01, 0.10 - 0.005*(level - 18));
+  }
+  // Starting cost for Speed/Amplifier depends on your permanent cost tier —
+  // each tier halves it. This is the ONE thing that survives between games.
+  function baseCost(){ return Math.max(1, 10 / Math.pow(2, save.costTier)); }
+  function speedCost(level){ return baseCost() * Math.pow(2, level); }
+  function scoreMult(level){ return 1 + 0.05*level; }                  // each level: +0.05 score (1.00 -> 1.05 -> ...)
+  function multCost(level){ return baseCost() * Math.pow(2, level); }
+  function funcThreshold(level){ return Math.round(10 * Math.pow(100, level)); } // session-best needed to reach level+1: 10, 1000, 100000, ...
+  // funcThreshold and costTierBarrier are always exact powers of ten
+  // (10^(1+2*level)), so the mantissa is always "1.00" — skip it, show "10^exp".
+  function funcThresholdLabel(level){ return '10' + toSuperscript(1 + 2*level); }
+  function costTierBarrier(tier){ return Math.round(10 * Math.pow(100, tier)); } // session-best needed to drop to the next cost tier
+  function costTierBarrierLabel(tier){ return '10' + toSuperscript(1 + 2*tier); }
+
+  // Reflex Idle: your SESSION-best score is your passive points-per-second
+  // rate while a game is running. It resets with the rest of the session —
+  // idle income doesn't carry over, only the cost tier does.
+  function passiveRate(){ return sessionActive() ? save.sessionBest : 0; }
+
+  const SESSION_LENGTH_MS = 5 * 60 * 1000; // one game = 5 minutes on the clock
+  function sessionActive(){ return save.sessionEndsAt > Date.now(); }
+
+  // ================= SAVE DATA =================
+  // Rule: bump this version suffix on every gameplay-affecting change
+  // (scoring, costs, effects, save shape). It resets everyone to a clean
+  // slate instead of leaving stale/incompatible numbers behind.
+  const SAVE_KEY = 'inv_x_reflex_save_v20'; // bumped: 5-minute session structure — only cost tier persists between games
+  const SAVE_DEFAULTS = {
+    allTimeBest: 0,   // persists forever
+    costTier: 0,      // persists forever — the only cross-game upgrade
+    lastSessionBest: 0, // persists forever, just for the landing screen's "last game" readout
+    sessionBest: 0,   // resets every new session
+    runs: 0,          // lifetime counter, cosmetic only
+    points: 0, speedLevel: 0, multLevel: 0, funcLevel: 0, // all reset every new session
+    lastTick: Date.now(),
+    sessionEndsAt: 0  // 0 = no active session
+  };
+  function loadSave(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(SAVE_KEY));
+      if (raw && typeof raw === 'object') return Object.assign({}, SAVE_DEFAULTS, raw);
+    }catch(e){}
+    return Object.assign({}, SAVE_DEFAULTS);
+  }
+  let save = loadSave();
+  function persist(){ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }
+
+  // Idle income only accrues for the portion of elapsed time a session was
+  // actually active — runs once immediately (covering time since the page
+  // was last open) and then every 200ms while the tab stays open.
+  function idleTick(){
+    const now = Date.now();
+    if (save.sessionEndsAt > 0){
+      const activeUntil = Math.min(now, save.sessionEndsAt);
+      if (activeUntil > save.lastTick){
+        save.points += save.sessionBest * ((activeUntil - save.lastTick) / 1000);
+      }
+      if (now >= save.sessionEndsAt) endSession();
+    }
+    save.lastTick = now;
+    persist();
+  }
+  // (started later, once DOM refs and endSession/renderStats exist — see boot section)
+
+  // ================= DOM refs =================
+  const hudHighScore = document.getElementById('hudHighScore');
+  const hudSessionBest = document.getElementById('hudSessionBest');
+  const hudPoints = document.getElementById('hudPoints');
+  const hudRate = document.getElementById('hudRate');
+  const hudTimer = document.getElementById('hudTimer');
+  const ovLanding = document.getElementById('ovLanding');
+  const landAllTime = document.getElementById('landAllTime');
+  const landLast = document.getElementById('landLast');
+  const landCost = document.getElementById('landCost');
+  const landNextTier = document.getElementById('landNextTier');
+  const btnStartSession = document.getElementById('btnStartSession');
+  const speedLv = document.getElementById('speedLv');
+  const speedEffect = document.getElementById('speedEffect');
+  const speedCostEl = document.getElementById('speedCost');
+  const speedEtaEl = document.getElementById('speedEta');
+  const speedFillEl = document.getElementById('speedFill');
+  const btnBuySpeed = document.getElementById('btnBuySpeed');
+  const cardSpeed = document.getElementById('cardSpeed');
+  const multLv = document.getElementById('multLv');
+  const multEffect = document.getElementById('multEffect');
+  const multCostEl = document.getElementById('multCost');
+  const multEtaEl = document.getElementById('multEta');
+  const multFillEl = document.getElementById('multFill');
+  const btnBuyMult = document.getElementById('btnBuyMult');
+  const cardMult = document.getElementById('cardMult');
+  const funcLv = document.getElementById('funcLv');
+  const funcEffect = document.getElementById('funcEffect');
+  const funcCostEl = document.getElementById('funcCost');
+  const btnBuyFunc = document.getElementById('btnBuyFunc');
+  const cardFunc = document.getElementById('cardFunc');
+  const resEarn = document.getElementById('resEarn');
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+
+  const hudAngle = document.getElementById('hudAngle');
+  const hudVal = document.getElementById('hudVal');
+  const hudFnLabel = document.getElementById('hudFnLabel');
+  const idleTitle = document.getElementById('idleTitle');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  const ovIdle = document.getElementById('ovIdle');
+  const ovCountdown = document.getElementById('ovCountdown');
+  const ovResult = document.getElementById('ovResult');
+  const countdownEl = document.getElementById('countdown');
+  const resScore = document.getElementById('resScore');
+  const resTierline = document.getElementById('resTierline');
+  const resMeta = document.getElementById('resMeta');
+
+  const btnStart = document.getElementById('btnStart');
+  const btnAgain = document.getElementById('btnAgain');
+
+  function formatClock(ms){
+    const s = Math.max(0, Math.ceil(ms/1000));
+    return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+  }
+
+  function renderStats(){
+    const active = sessionActive();
+
+    hudHighScore.textContent = fmtNum(save.allTimeBest);
+    hudSessionBest.textContent = fmtNum(save.sessionBest);
+    hudPoints.textContent = fmtNum(save.points);
+    const rate = passiveRate();
+    hudRate.textContent = '(+' + fmtNum(rate) + '/s)';
+
+    if (active){
+      const msLeft = save.sessionEndsAt - Date.now();
+      hudTimer.textContent = formatClock(msLeft);
+      hudTimer.classList.toggle('urgent', msLeft < 30000);
+    } else {
+      hudTimer.textContent = '--:--';
+      hudTimer.classList.remove('urgent');
+    }
+
+    // landing screen (pre-game or between games)
+    ovLanding.classList.toggle('hidden', active);
+    if (!active){
+      landAllTime.textContent = fmtNum(save.allTimeBest);
+      landLast.textContent = save.runs > 0 ? fmtNum(save.lastSessionBest) : '—';
+      landCost.textContent = fmtNum(baseCost()) + ' pts';
+      landNextTier.textContent = costTierBarrierLabel(save.costTier);
+    }
+
+    speedLv.textContent = 'Lv ' + save.speedLevel;
+    speedEffect.textContent = '×' + speedFactor(save.speedLevel).toFixed(2) + ' speed';
+    const nextSpeedCost = speedCost(save.speedLevel);
+    speedCostEl.textContent = fmtNum(nextSpeedCost) + ' pts';
+    const speedAfford = save.points >= nextSpeedCost;
+    const speedPct = Math.min(100, (save.points / nextSpeedCost) * 100);
+    btnBuySpeed.classList.toggle('afford', speedAfford);
+    speedFillEl.style.width = speedPct + '%';
+    speedEtaEl.textContent = speedAfford ? 'ready now' : formatDuration((nextSpeedCost - save.points) / rate);
+    speedEtaEl.classList.toggle('ready', speedAfford);
+
+    multLv.textContent = 'Lv ' + save.multLevel;
+    multEffect.textContent = '×' + scoreMult(save.multLevel).toFixed(2) + ' score';
+    const nextMultCost = multCost(save.multLevel);
+    multCostEl.textContent = fmtNum(nextMultCost) + ' pts';
+    const multAfford = save.points >= nextMultCost;
+    const multPct = Math.min(100, (save.points / nextMultCost) * 100);
+    btnBuyMult.classList.toggle('afford', multAfford);
+    multFillEl.style.width = multPct + '%';
+    multEtaEl.textContent = multAfford ? 'ready now' : formatDuration((nextMultCost - save.points) / rate);
+    multEtaEl.classList.toggle('ready', multAfford);
+
+    funcLv.textContent = 'Lv ' + save.funcLevel;
+    funcEffect.textContent = funcSymbol(save.funcLevel);
+    const nextFuncThreshold = funcThreshold(save.funcLevel);
+    const funcMet = save.sessionBest >= nextFuncThreshold;
+    funcCostEl.textContent = 'needs session best ' + funcThresholdLabel(save.funcLevel);
+    funcCostEl.classList.toggle('met', funcMet);
+    btnBuyFunc.classList.toggle('afford', funcMet);
+
+    idleTitleUpdate();
+  }
+
+  function idleTitleUpdate(){
+    const sym = funcSymbol(save.funcLevel);
+    idleTitle.textContent = sym.toUpperCase();
+    hudFnLabel.textContent = sym;
+  }
+
+  function buySpeed(){
+    const cost = speedCost(save.speedLevel);
+    if (save.points >= cost){
+      save.points -= cost;
+      save.speedLevel += 1;
+      persist();
+      renderStats();
+    } else {
+      cardSpeed.classList.add('shake');
+      setTimeout(()=>cardSpeed.classList.remove('shake'), 350);
+    }
+  }
+  function buyMult(){
+    const cost = multCost(save.multLevel);
+    if (save.points >= cost){
+      save.points -= cost;
+      save.multLevel += 1;
+      persist();
+      renderStats();
+    } else {
+      cardMult.classList.add('shake');
+      setTimeout(()=>cardMult.classList.remove('shake'), 350);
+    }
+  }
+  function buyFunc(){
+    const threshold = funcThreshold(save.funcLevel);
+    if (save.sessionBest >= threshold){
+      save.funcLevel += 1;
+      // in-session prestige reset: only funcLevel survives within this game.
+      // Speed, Amplifier, points, and session-best (and therefore idle
+      // income) all start over against the new, harder curve.
+      save.speedLevel = 0;
+      save.multLevel = 0;
+      save.points = 0;
+      save.sessionBest = 0;
+      persist();
+      renderStats();
+    } else {
+      cardFunc.classList.add('shake');
+      setTimeout(()=>cardFunc.classList.remove('shake'), 350);
+    }
+  }
+  btnBuySpeed.addEventListener('click', buySpeed);
+  btnBuyMult.addEventListener('click', buyMult);
+  btnBuyFunc.addEventListener('click', buyFunc);
+
+  // ---- reset (two-click confirm, no blocking browser dialog) ----
+  const btnReset = document.getElementById('btnReset');
+  let resetArmed = false, resetTimer = null;
+  btnReset.addEventListener('click', ()=>{
+    if (!resetArmed){
+      resetArmed = true;
+      btnReset.textContent = 'CLICK AGAIN TO CONFIRM';
+      btnReset.classList.add('confirming');
+      resetTimer = setTimeout(()=>{
+        resetArmed = false;
+        btnReset.textContent = 'RESET PROGRESS';
+        btnReset.classList.remove('confirming');
+      }, 3000);
+    } else {
+      clearTimeout(resetTimer);
+      localStorage.removeItem(SAVE_KEY);
+      save = loadSave();
+      persist();
+      state = 'idle'; tRun = 0; lastTs = null; trail = [];
+      ovIdle.classList.add('hidden');
+      ovCountdown.classList.add('hidden');
+      ovResult.classList.add('hidden');
+      pauseBtn.classList.add('hidden');
+      renderStats(); // sessionActive() is false, so this shows the landing screen
+      resetArmed = false;
+      btnReset.textContent = 'RESET PROGRESS';
+      btnReset.classList.remove('confirming');
+    }
+  });
+
+  // ================= GAME ENGINE =================
+  let state = 'idle'; // idle | countdown | running | result
+  let tRun = 0;
+  let lastTs = null;
+  let trail = [];
+  let countdownStart = 0;
+  let W=0,H=0;
+
+  function angleAt(t){
+    const f = speedFactor(save.speedLevel);
+    const v0 = BASE_ACCEL.v0 * f, acc = BASE_ACCEL.acc * f;
+    return v0*t + 0.5*acc*t*t;
+  }
+
+  function resize(){
+    const rect = stage.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = rect.width*dpr;
+    canvas.height = rect.height*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    W = rect.width; H = rect.height;
+  }
+  window.addEventListener('resize', resize);
+
+  function plotBounds(){
+    const pad = { l: 46, r: 20, t: 22, b: 34 };
+    return { x0: pad.l, x1: W-pad.r, y0: H-pad.b, y1: pad.t };
+  }
+  function xToPx(xDeg){
+    const p = plotBounds();
+    return p.x0 + (xDeg/DOMAIN_MAX) * (p.x1-p.x0);
+  }
+  function yToPx(yVal){
+    const p = plotBounds();
+    const clamped = Math.max(0, Math.min(Y_CAP, yVal));
+    return p.y0 - (clamped/Y_CAP) * (p.y0-p.y1);
+  }
+
+  function goIdle(){
+    state = 'idle'; tRun = 0; lastTs = null; trail = [];
+    ovLanding.classList.add('hidden');
+    ovIdle.classList.remove('hidden');
+    ovCountdown.classList.add('hidden');
+    ovResult.classList.add('hidden');
+    pauseBtn.classList.add('hidden');
+    hudAngle.textContent = '0.00';
+    hudVal.textContent = '∞';
+  }
+
+  function resetRun(){ tRun = 0; lastTs = null; trail = []; }
+
+  // ================= SESSION (5-minute game) =================
+  function startSession(){
+    save.points = 0; save.speedLevel = 0; save.multLevel = 0; save.funcLevel = 0; save.sessionBest = 0;
+    save.sessionEndsAt = Date.now() + SESSION_LENGTH_MS;
+    save.lastTick = Date.now();
+    persist();
+    goIdle();
+    renderStats();
+  }
+
+  function endSession(){
+    save.lastSessionBest = save.sessionBest;
+    if (save.sessionBest > save.allTimeBest) save.allTimeBest = save.sessionBest;
+    while (save.sessionBest >= costTierBarrier(save.costTier)) save.costTier += 1;
+    save.sessionEndsAt = 0;
+    persist();
+
+    // drop back to a neutral state; the landing screen (shown by the next
+    // renderStats() call, since sessionActive() is now false) covers the rest
+    state = 'idle'; tRun = 0; lastTs = null; trail = [];
+    ovIdle.classList.add('hidden');
+    ovCountdown.classList.add('hidden');
+    ovResult.classList.add('hidden');
+    pauseBtn.classList.add('hidden');
+  }
+
+  function startCountdown(){
+    if (!sessionActive()) return;
+    resetRun();
+    state = 'countdown';
+    countdownStart = performance.now();
+    ovIdle.classList.add('hidden');
+    ovResult.classList.add('hidden');
+    ovCountdown.classList.remove('hidden');
+    pauseBtn.classList.add('hidden');
+  }
+
+  function beginRun(){
+    state = 'running';
+    ovCountdown.classList.add('hidden');
+    pauseBtn.classList.remove('hidden');
+    lastTs = performance.now();
+  }
+
+  function tierLabel(score, busted){
+    if (busted) return { text: '⌛ TOO SLOW — FADED TO ZERO', color: 'var(--red)' };
+    if (score >= 15) return { text: '⚡ LEGENDARY REFLEXES', color: 'var(--magenta)' };
+    if (score >= 8) return { text: '🔥 INCREDIBLE', color: 'var(--yellow)' };
+    if (score >= 4) return { text: '✓ SHARP', color: 'var(--cyan)' };
+    if (score >= 2) return { text: 'DECENT', color: 'var(--cyan)' };
+    return { text: 'TOO SLOW', color: 'var(--dim)' };
+  }
+
+  function endRun(busted){
+    const xFinal = busted ? DOMAIN_MAX : angleAt(tRun);
+    // score starts as the literal 1/x value shown on the HUD, then gets
+    // scaled by however many Amplifier levels you've bought.
+    let score = busted ? 0 : fn(Math.min(xFinal, DOMAIN_MAX)) * scoreMult(save.multLevel);
+    score = Math.max(0, score);
+
+    const earned = score; // points earned = score itself, no rounding/scaling
+    save.runs += 1;
+    save.points += earned;
+    const prevBest = save.sessionBest;
+    if (score > save.sessionBest) save.sessionBest = score;
+    persist();
+    renderStats();
+
+    const tl = tierLabel(score, busted);
+    resScore.textContent = fmtNum(score);
+    resScore.style.color = busted ? 'var(--red)' : tl.color;
+    resTierline.textContent = tl.text;
+    resTierline.style.color = tl.color;
+    resMeta.textContent = busted
+      ? `never paused — it faded away by x = ${xFinal.toFixed(2)}`
+      : `paused at x = ${xFinal.toFixed(3)}` + (score > prevBest ? '  •  NEW BEST' : '');
+    resEarn.textContent = `+${fmtNum(earned)} points  (wallet: ${fmtNum(save.points)})`;
+
+    state = 'result';
+    pauseBtn.classList.add('hidden');
+    ovResult.classList.remove('hidden');
+
+    if (busted){
+      document.body.classList.add('shake');
+      setTimeout(()=>document.body.classList.remove('shake'), 350);
+    }
+  }
+
+  function doPause(){
+    if (state !== 'running') return;
+    endRun(false);
+  }
+
+  // ---- input ----
+  window.addEventListener('keydown', (e)=>{
+    if (e.code === 'Space'){
+      e.preventDefault();
+      if (!sessionActive()) { startSession(); return; }
+      if (state === 'idle' || state === 'result') startCountdown();
+      else if (state === 'running') doPause();
+    }
+  });
+  canvas.addEventListener('click', ()=>{
+    if (!sessionActive()) return; // landing overlay covers the canvas anyway
+    if (state === 'running') doPause();
+    else if (state === 'idle' || state === 'result') startCountdown();
+  });
+  btnStart.addEventListener('click', (e)=>{ e.stopPropagation(); startCountdown(); });
+  btnAgain.addEventListener('click', (e)=>{ e.stopPropagation(); startCountdown(); });
+  pauseBtn.addEventListener('click', (e)=>{ e.stopPropagation(); doPause(); });
+  btnStartSession.addEventListener('click', (e)=>{ e.stopPropagation(); startSession(); });
+
+  // ---- drawing ----
+  function drawGrid(){
+    const p = plotBounds();
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.font = '11px system-ui';
+
+    // danger zone: near x=0, where cot(x) is enormous
+    const dx0 = xToPx(0), dx1 = xToPx(DOMAIN_MAX*0.10);
+    const grad = ctx.createLinearGradient(dx0,0,dx1,0);
+    grad.addColorStop(0,'rgba(255,51,85,.28)');
+    grad.addColorStop(1,'rgba(255,51,85,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(dx0, p.y1, dx1-dx0, p.y0-p.y1);
+
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    for (let d=0; d<=DOMAIN_MAX+0.001; d+=1){
+      const px = xToPx(d);
+      ctx.beginPath(); ctx.moveTo(px,p.y1); ctx.lineTo(px,p.y0); ctx.stroke();
+      ctx.fillText(String(Math.round(d)), px-6, p.y0+16);
+    }
+    for (let v=0; v<=Y_CAP; v+=10){
+      const py = yToPx(v);
+      ctx.beginPath(); ctx.moveTo(p.x0,py); ctx.lineTo(p.x1,py); ctx.stroke();
+      ctx.fillText(String(v), p.x0-26, py+4);
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,.25)';
+    ctx.beginPath(); ctx.moveTo(p.x0,p.y0); ctx.lineTo(p.x1,p.y0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p.x0,p.y0); ctx.lineTo(p.x0,p.y1); ctx.stroke();
+    ctx.restore();
+  }
+
+  function currentXY(){
+    let xDeg;
+    if (state === 'running') xDeg = Math.min(angleAt(tRun), DOMAIN_MAX);
+    else if (state === 'result') xDeg = trail.length ? trail[trail.length-1].xDeg : 0;
+    else xDeg = 0;
+    const yVal = fn(Math.min(xDeg, DOMAIN_MAX*0.99999));
+    return { xDeg, yVal };
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+
+    if (trail.length > 1){
+      ctx.save();
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      ctx.shadowBlur = 12;
+      for (let i=1;i<trail.length;i++){
+        const a = trail[i-1], b = trail[i];
+        const t = b.xDeg/DOMAIN_MAX;
+        const danger = 1 - t; // starts dangerous (1), cools off toward 0
+        let col;
+        if (danger < 0.75) col = '#33e6ff';
+        else if (danger < 0.92) col = '#ffd23f';
+        else col = '#ff3355';
+        ctx.strokeStyle = col;
+        ctx.shadowColor = col;
+        ctx.beginPath();
+        ctx.moveTo(xToPx(a.xDeg), yToPx(a.yClipped));
+        ctx.lineTo(xToPx(b.xDeg), yToPx(b.yClipped));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    if (state === 'running' || state === 'result'){
+      const { xDeg, yVal } = currentXY();
+      const clipped = Math.min(yVal, Y_CAP);
+      const px = xToPx(xDeg), py = yToPx(clipped);
+
+      if (yVal >= Y_CAP*0.98){
+        const p = plotBounds();
+        const grad = ctx.createLinearGradient(0, p.y1-20, 0, py);
+        grad.addColorStop(0,'rgba(255,51,85,0)');
+        grad.addColorStop(1,'rgba(255,51,85,.9)');
+        ctx.save();
+        ctx.fillStyle = grad;
+        ctx.fillRect(px-2, p.y1-20, 4, py-(p.y1-20));
+        ctx.restore();
+      }
+
+      const pulse = 5 + Math.sin(performance.now()/90)*2;
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#ff3355';
+      ctx.beginPath();
+      ctx.arc(px, py, pulse, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function loop(ts){
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min((ts-lastTs)/1000, 0.05);
+    lastTs = ts;
+
+    if (state === 'countdown'){
+      const elapsed = (performance.now() - countdownStart)/1000;
+      const n = 3 - Math.floor(elapsed);
+      if (elapsed >= 3){
+        countdownEl.textContent = 'GO!';
+        if (elapsed >= 3.4) beginRun();
+      } else {
+        countdownEl.textContent = String(Math.max(1,n));
+      }
+    }
+
+    if (state === 'running'){
+      tRun += dt;
+      const xDeg = angleAt(tRun);
+      if (xDeg >= BUST_P){
+        trail.push({xDeg: DOMAIN_MAX, yClipped: Y_CAP});
+        endRun(true);
+      } else {
+        const yVal = fn(xDeg);
+        const yClipped = Math.min(yVal, Y_CAP);
+        trail.push({xDeg, yClipped});
+        hudAngle.textContent = xDeg.toFixed(3);
+        hudVal.textContent = yVal > 1e4 ? '∞' : yVal.toFixed(2);
+      }
+    }
+
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // boot: settle any session that expired while the tab was closed, then
+  // render (this decides idle-vs-landing) and start the ticking loops.
+  idleTick();
+  if (sessionActive()) goIdle();
+  renderStats();
+  resize();
+  setInterval(()=>{ idleTick(); renderStats(); }, 200);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
