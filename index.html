@@ -247,7 +247,7 @@
       <div class="overlay hidden" id="ovLanding">
         <div class="big">NEW GAME</div>
         <div class="sub">
-          5 minutes on the clock. Points, Slow-Mo, Amplifier, and Upgrade Function all reset to zero —
+          1 minute on the clock. Points, Slow-Mo, Amplifier, and Upgrade Function all reset to zero —
           the only thing that carries over between games is your starting cost, unlocked by clearing
           high-score barriers.
         </div>
@@ -256,7 +256,7 @@
           <div>LAST GAME'S SCORE <b id="landLast">—</b></div>
           <div>STARTING COST <b class="lcyan" id="landCost">10 pts</b> · next tier at <b id="landNextTier">10¹</b></div>
         </div>
-        <button id="btnStartSession">START 5-MIN GAME</button>
+        <button id="btnStartSession">START 1-MIN GAME</button>
         <div class="hint">SPACE / TAP TO PLAY</div>
       </div>
 
@@ -342,7 +342,7 @@
   // either react almost instantly for a high score, or the value fades
   // away the longer you hesitate. No trig, no degrees — just a number line.
   const DOMAIN_MAX = 10;
-  const BASE_ACCEL = { v0: 4*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is 4x the original pace (10x, then 2.5x slower)
+  const BASE_ACCEL = { v0: 1*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is back to the original pace (4x, then 4x slower)
   const BUST_FRAC = 89.9/90;
   const BUST_P = DOMAIN_MAX * BUST_FRAC;
   const Y_CAP = 30;
@@ -417,14 +417,14 @@
   // idle income doesn't carry over, only the cost tier does.
   function passiveRate(){ return sessionActive() ? save.sessionBest : 0; }
 
-  const SESSION_LENGTH_MS = 5 * 60 * 1000; // one game = 5 minutes on the clock
+  const SESSION_LENGTH_MS = 1 * 60 * 1000; // one game = 1 minute on the clock
   function sessionActive(){ return save.sessionEndsAt > Date.now(); }
 
   // ================= SAVE DATA =================
   // Rule: bump this version suffix on every gameplay-affecting change
   // (scoring, costs, effects, save shape). It resets everyone to a clean
   // slate instead of leaving stale/incompatible numbers behind.
-  const SAVE_KEY = 'inv_x_reflex_save_v23'; // bumped: initial speed dialed back 2.5x from 10x (now 4x original)
+  const SAVE_KEY = 'inv_x_reflex_save_v24'; // bumped: speed back to original pace (1x), session length cut from 5min to 1min
   const SAVE_DEFAULTS = {
     allTimeBest: 0,   // persists forever
     costTier: 0,      // persists forever — the only cross-game upgrade
@@ -714,7 +714,7 @@
 
   function resetRun(){ tRun = 0; lastTs = null; trail = []; }
 
-  // ================= SESSION (5-minute game) =================
+  // ================= SESSION (1-minute game) =================
   function startSession(){
     save.points = 0; save.speedLevel = 0; save.multLevel = 0; save.funcLevel = 0; save.sessionBest = 0;
     save.sessionEndsAt = Date.now() + SESSION_LENGTH_MS;
