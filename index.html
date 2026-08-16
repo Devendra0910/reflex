@@ -22,6 +22,9 @@
     font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
     user-select:none;
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust:100%;
+    touch-action:manipulation; /* kills the 300ms tap delay + double-tap zoom, still allows panning */
+    overflow-x:hidden;
   }
   #app{
     display:flex; flex-direction:column; align-items:center;
@@ -95,8 +98,10 @@
     color:#170000; cursor:pointer; font-size:13px;
     box-shadow:0 6px 20px rgba(255,51,85,.35);
     transition:transform .12s ease;
+    min-height:44px; /* comfortable touch target */
   }
   button:active{ transform:scale(.95); }
+  button:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
 
   #countdown{ font-size:80px; font-weight:900; color:var(--yellow); text-shadow:0 0 30px rgba(255,210,63,.7); }
 
@@ -144,7 +149,7 @@
 
   .upcard button.upbtn{
     position:relative; overflow:hidden; isolation:isolate; width:100%;
-    padding:9px 18px; font-size:12px;
+    padding:9px 18px; font-size:12px; min-height:44px;
     background:#161c2c; color:#9fb0cc; box-shadow:none;
     border:1px solid #232c40;
   }
@@ -189,6 +194,29 @@
   .landingstats b{ color:var(--text); }
   .landingstats .lmagenta{ color:var(--magenta); }
   .landingstats .lcyan{ color:var(--cyan); }
+
+  /* ---------------- MOBILE ---------------- */
+  @media (max-width:480px){
+    #app{ padding:14px 12px; }
+    .title h1{ font-size:21px; letter-spacing:2px; }
+    .title .lvl{ font-size:9px; letter-spacing:2px; }
+    .statsbar{ gap:8px 14px; font-size:11px; margin-bottom:10px; }
+    .statsbar b{ font-size:13px; }
+    .hud{ gap:12px; font-size:10.5px; top:8px; }
+    .big{ font-size:23px; }
+    .sub{ font-size:11.5px; }
+    .score{ font-size:40px; }
+    .tierline{ font-size:13px; }
+    #countdown{ font-size:60px; }
+    .pausebtn{ padding:10px 20px; font-size:11px; }
+    .upcard{ padding:12px 13px; }
+    .upcard .upeffect{ font-size:17px; }
+    .footer{ font-size:10px; }
+  }
+  @media (max-width:360px){
+    .hud{ flex-direction:column; align-items:center; gap:2px; }
+    .statsbar{ gap:6px 12px; }
+  }
 </style>
 </head>
 <body>
