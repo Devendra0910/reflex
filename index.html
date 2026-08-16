@@ -342,7 +342,7 @@
   // either react almost instantly for a high score, or the value fades
   // away the longer you hesitate. No trig, no degrees — just a number line.
   const DOMAIN_MAX = 10;
-  const BASE_ACCEL = { v0: 10*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is 10x the original pace (4x, then 2.5x more)
+  const BASE_ACCEL = { v0: 4*8*(DOMAIN_MAX/90), acc: 1.2*(DOMAIN_MAX/90) }; // initial speed (v0) is 4x the original pace (10x, then 2.5x slower)
   const BUST_FRAC = 89.9/90;
   const BUST_P = DOMAIN_MAX * BUST_FRAC;
   const Y_CAP = 30;
@@ -424,7 +424,7 @@
   // Rule: bump this version suffix on every gameplay-affecting change
   // (scoring, costs, effects, save shape). It resets everyone to a clean
   // slate instead of leaving stale/incompatible numbers behind.
-  const SAVE_KEY = 'inv_x_reflex_save_v22'; // bumped: initial speed raised 2.5x again (now 10x original)
+  const SAVE_KEY = 'inv_x_reflex_save_v23'; // bumped: initial speed dialed back 2.5x from 10x (now 4x original)
   const SAVE_DEFAULTS = {
     allTimeBest: 0,   // persists forever
     costTier: 0,      // persists forever — the only cross-game upgrade
