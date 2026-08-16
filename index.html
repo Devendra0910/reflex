@@ -367,6 +367,12 @@
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return sign + parts.join('.');
   }
+  // Same, but rounded to a whole number — used for the all-time high score.
+  function fmtInt(n){
+    if (!isFinite(n)) return n > 0 ? '∞' : (n < 0 ? '-∞' : 'NaN');
+    const sign = n < 0 ? '-' : '';
+    return sign + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
 
   // How long until idle income alone covers a shortfall, in "1d 3h" style.
   function formatDuration(sec){
@@ -518,7 +524,7 @@
   function renderStats(){
     const active = sessionActive();
 
-    hudHighScore.textContent = fmtNum(save.allTimeBest);
+    hudHighScore.textContent = fmtInt(save.allTimeBest);
     hudSessionBest.textContent = fmtNum(save.sessionBest);
     hudPoints.textContent = fmtNum(save.points);
     const rate = passiveRate();
@@ -536,7 +542,7 @@
     // landing screen (pre-game or between games)
     ovLanding.classList.toggle('hidden', active);
     if (!active){
-      landAllTime.textContent = fmtNum(save.allTimeBest);
+      landAllTime.textContent = fmtInt(save.allTimeBest);
       landLast.textContent = save.runs > 0 ? fmtNum(save.lastSessionBest) : '—';
       landCost.textContent = fmtNum(baseCost()) + ' pts';
       landNextTier.textContent = fmtNum(costTierBarrier(save.costTier));
